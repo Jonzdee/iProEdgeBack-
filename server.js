@@ -1,7 +1,7 @@
 const express = require('express');
 const { db, admin } = require('./firebase');
 const nodemailer = require('nodemailer');
-const { authenticate, requireAdmin } = require('./fresh-clone/middleware/auth');
+const { authenticate, requireAdmin } = require('./middleware/auth');
 const morgan = require('morgan');
 const cors = require('cors');
 const app = express();
