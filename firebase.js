@@ -1,13 +1,10 @@
-require('dotenv').config();
 const admin = require('firebase-admin');
-const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.applicationDefault(), // Uses the GOOGLE_APPLICATION_CREDENTIALS
   });
 }
 
 const db = admin.firestore();
-
 module.exports = { admin, db };
