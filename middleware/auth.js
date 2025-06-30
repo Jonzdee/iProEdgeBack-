@@ -1,4 +1,4 @@
-const {admin} = require("../../firebase"); // Do NOT call initializeApp again!
+const {admin} = require("../firebase"); // Do NOT call initializeApp again!
 
 async function authenticate(req, res, next) {
   const token = req.headers.authorization?.split('Bearer ')[1];
