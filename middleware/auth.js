@@ -14,7 +14,7 @@ async function authenticate(req, res, next) {
 
 function requireAdmin(req, res, next) {
   // Adjust your admin logic as needed
-  if (req.user?.admin || req.user?.email === "ogunyankinjohnson@email.com") return next();
+  if (req.user?.admin || req.user?.email === "ogunyankinjohnson@gmail.com") return next();
   return res.status(403).json({ error: "Admin only" });
 }
 

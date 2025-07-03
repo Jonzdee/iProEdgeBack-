@@ -16,7 +16,7 @@ app.use(
     credentials: true,
   })
 );
-app.options('*', cors()); // Preflight handling
+
 
 // Nodemailer transporter (use environment variables in production)
 const transporter = nodemailer.createTransport({
