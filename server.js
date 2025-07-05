@@ -438,6 +438,20 @@ app.get('/admin/orders', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+app.post('/api/webhooks/palmpay', async (req, res) => {
+  // Palmpay sends payment notification here
+  const { reference, status, amount } = req.body;
+  // Find order by Palmpay reference
+  const order = await Order.findOne({ palmpayRef: reference });
+  if (!order) return res.status(404).send('Order not found');
+  if (status === 'success') {
+    order.status = 'paid';
+    await order.save();
+    // Notify frontend if using websockets, or update in DB
+  }
+  res.send('ok');
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
