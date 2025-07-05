@@ -439,15 +439,67 @@ app.get('/admin/orders', authenticate, requireAdmin, async (req, res) => {
 });
 
 app.post('/api/webhooks/palmpay', async (req, res) => {
-  // Palmpay sends payment notification here
   const { reference, status, amount } = req.body;
-  // Find order by Palmpay reference
   const order = await Order.findOne({ palmpayRef: reference });
   if (!order) return res.status(404).send('Order not found');
   if (status === 'success') {
     order.status = 'paid';
     await order.save();
-    // Notify frontend if using websockets, or update in DB
+
+    // Professional confirmation email
+    try {
+      await transporter.sendMail({
+        from: '"Iproedge" ogunyankinjohnson@gmail.com',
+        to: order.userEmail,
+        subject: 'Payment Confirmation – Thank You for Your Order!',
+        html: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa; padding: 0; margin: 0;">
+            <div style="max-width: 520px; margin: 30px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(60,60,60,0.06); overflow: hidden;">
+              <div style="background: #ffbb00; padding: 28px 30px;">
+                <h1 style="margin: 0; color: #1a1a1a; font-size: 1.8rem; letter-spacing: 1px;">Your Payment Was Received!</h1>
+              </div>
+              <div style="padding: 28px 30px 20px 30px;">
+                <p style="font-size: 1.1rem; color: #24292f; margin: 0 0 16px;">
+                  Hi <strong>${order.name || order.userName || 'Valued Customer'}</strong>,
+                </p>
+                <p style="font-size: 1.08rem; color: #222; margin-bottom: 20px;">
+                  Thank you for your recent order with us!<br>
+                  We have <span style="color: #22bb33; font-weight: 600;">successfully received your payment</span> of 
+                  <strong style="color: #06a;">₦${amount}</strong> for order <strong>${order._id}</strong>.
+                </p>
+                <div style="background: #f6f9fc; padding: 16px 20px; border-radius: 6px; margin-bottom: 16px;">
+                  <p style="margin: 0; color: #1a1a1a;">
+                    <b>Order ID:</b> <span style="color: #0066c0;">${order._id}</span><br>
+                    <b>Payment Reference:</b> <span style="color: #0066c0;">${reference}</span>
+                  </p>
+                </div>
+                <p style="font-size: 1.07rem; color: #444; margin-bottom: 18px;">
+                  Our team is now processing your order and you will receive an update once it is ready for delivery.<br>
+                  If you have any questions, you may reply to this email or call us.
+                </p>
+                <div style="margin: 30px 0 15px 0;">
+                  <a href="https://iproedge-v2.vercel.app/orders/${order._id}" style="display: inline-block; padding: 12px 32px; background: #ffbb00; color: #1a1a1a; font-weight: 600; border-radius: 7px; font-size: 1rem; text-decoration: none;">View Order</a>
+                </div>
+                <hr style="margin: 25px 0;">
+                <p style="font-size: 1rem; color: #888;">
+                  Thank you for choosing <strong>Iproedge</strong>!<br>
+                  <span style="color: #1a1a1a;">We appreciate your business.</span>
+                </p>
+                <p style="font-size: 1rem; color: #bbb; margin-top: 20px;">
+                  — The Iproedge Team
+                </p>
+              </div>
+            </div>
+            <div style="text-align: center; color: #aaa; font-size: 0.95rem; margin: 18px 0;">
+              &copy; ${new Date().getFullYear()} Iproedge. All rights reserved.
+            </div>
+          </div>
+        `
+      });
+    } catch (err) {
+      console.error('Email send error:', err);
+      // You can choose to return 500 here or just log the error
+    }
   }
   res.send('ok');
 });
