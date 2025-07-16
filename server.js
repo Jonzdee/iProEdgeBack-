@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(morgan('combined'));
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app'],
+    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app','https://www.iproedge.store'],
     credentials: true,
   })
 );
@@ -24,8 +24,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // use TLS
   auth: {
-    user: process.env.MAIL_USER || 'ogunyankinjohnson@gmail.com',
-    pass: process.env.MAIL_PASS || 'weas ermr somi wjli',
+    user: process.env.MAIL_USER || 'hiproedge@gmail.com',
+    pass: process.env.MAIL_PASS || 'yrdq rplj uvje yqkq',
   },
 });
 
@@ -234,8 +234,7 @@ app.post('/order', authenticate, async (req, res) => {
       return res.status(200).json({ success: true, orderId: doc.id });
     }
 
-    // Add log for received data
-    console.log('[POST /order] Order data:', order);
+    
 
     // Save to Firestore (with clientOrderId)
     const docRef = await db.collection('orders').add({
@@ -244,11 +243,10 @@ app.post('/order', authenticate, async (req, res) => {
       timestamp: admin.firestore.Timestamp.now(),
     });
 
-    console.log(`[POST /order] Order saved with ID: ${docRef.id}`);
-
+   
     // Prepare customer email
     const mailOptions = {
-      from: process.env.MAIL_USER || 'ogunyankinjohnson@gmail.com',
+      from: process.env.MAIL_USER || 'hiproedge@gmail.com',
       to: order.userEmail,
       subject: 'Order Confirmation',
       text: `Hello ${order.userName},
@@ -280,8 +278,8 @@ The iProEdge Team
 
     // Prepare admin HTML notification
     const adminMailOptions = {
-      from: process.env.MAIL_USER || 'ogunyankinjohnson@gmail.com',
-      to: process.env.ADMIN_EMAIL || 'ogunyankinjohnson@gmail.com',
+      from: process.env.MAIL_USER || 'hiproedge@gmail.com',
+      to: process.env.ADMIN_EMAIL || 'hiproedge@gmail.com',
       subject: 'New Order Placed',
       text: `Hello Admin,
 
@@ -381,10 +379,10 @@ app.patch('/order/:id', authenticate, async (req, res) => {
 
     // --- EMAIL NOTIFICATION for cancel/return ---
     if (status === "cancelRequested" || status === "returnRequested") {
-      const adminEmail = process.env.ADMIN_EMAIL || "ogunyankinjohnson@gmail.com";
+      const adminEmail = process.env.ADMIN_EMAIL || "hiproedge@gmail.com";
       // User email
       const mailOptionsUser = {
-        from: process.env.MAIL_USER || 'ogunyankinjohnson@gmail.com',
+        from: process.env.MAIL_USER || 'hiproedge@gmail.com',
         to: order.userEmail,
         subject: status === "cancelRequested" ? "Order Cancellation Requested" : "Order Return Requested",
         text:
@@ -395,7 +393,7 @@ app.patch('/order/:id', authenticate, async (req, res) => {
       };
       // Admin email
       const mailOptionsAdmin = {
-        from: process.env.MAIL_USER || 'ogunyankinjohnson@gmail.com',
+        from: process.env.MAIL_USER || 'hiproedge@gmail.com',
         to: adminEmail,
         subject: status === "cancelRequested" ? "[ADMIN] Order Cancellation Requested" : "[ADMIN] Order Return Requested",
         text:
@@ -449,7 +447,7 @@ app.post('/api/webhooks/palmpay', async (req, res) => {
     // Professional confirmation email
     try {
       await transporter.sendMail({
-        from: '"Iproedge" ogunyankinjohnson@gmail.com',
+        from: '"Iproedge" hiproedge@gmail.com',
         to: order.userEmail,
         subject: 'Payment Confirmation – Thank You for Your Order!',
         html: `
@@ -478,7 +476,7 @@ app.post('/api/webhooks/palmpay', async (req, res) => {
                   If you have any questions, you may reply to this email or call us.
                 </p>
                 <div style="margin: 30px 0 15px 0;">
-                  <a href="https://iproedge-v2.vercel.app/orders/${order._id}" style="display: inline-block; padding: 12px 32px; background: #ffbb00; color: #1a1a1a; font-weight: 600; border-radius: 7px; font-size: 1rem; text-decoration: none;">View Order</a>
+                  <a href="https://www.iproedge.store/orders/${order._id}" style="display: inline-block; padding: 12px 32px; background: #ffbb00; color: #1a1a1a; font-weight: 600; border-radius: 7px; font-size: 1rem; text-decoration: none;">View Order</a>
                 </div>
                 <hr style="margin: 25px 0;">
                 <p style="font-size: 1rem; color: #888;">
