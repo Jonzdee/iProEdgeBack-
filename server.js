@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(morgan('combined'));
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app','https://www.iproedge.store'],
+    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app','https://www.iproedge.store','https://iproedge.store'],
     credentials: true,
   })
 );
