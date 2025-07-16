@@ -93,7 +93,7 @@ function orderConfirmationHtml(order, orderId) {
           </tr>
           <tr>
             <td align="center" style="padding:0 30px 32px 30px; color:#aaa; font-size:13px;">
-              &copy; ${new Date().getFullYear()} iProEdge. All rights reserved.
+              &copy; ${new Date().getFullYear()} iProedge. All rights reserved.
             </td>
           </tr>
         </table>
@@ -156,7 +156,7 @@ function adminOrderNotificationHtml(order, orderId) {
           </tr>
           <tr>
             <td align="center" style="padding:0 28px 24px 28px; color:#aaa; font-size:13px;">
-              &copy; ${new Date().getFullYear()} IprEdge. Admin Notification.
+              &copy; ${new Date().getFullYear()} Iproedge. Admin Notification.
             </td>
           </tr>
         </table>
