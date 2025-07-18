@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { db, admin } = require('./firebase');
 const nodemailer = require('nodemailer');
@@ -9,11 +10,13 @@ const PORT = process.env.PORT || 3001;
 const bodyParser = require('body-parser');
 
 
+
 // Middleware
 // app.use(express.json());
 app.use(bodyParser.json({
   verify: (req, res, buf) => {
-    req.rawBody = buf; // store raw body for signature verification
+    // 🔥 this stores the raw body (Buffer) for signature verification
+    req.rawBody = buf;
   }
 }));
 
