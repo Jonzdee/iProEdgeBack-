@@ -6,9 +6,17 @@ const morgan = require('morgan');
 const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3001;
+const bodyParser = require('body-parser');
+
 
 // Middleware
-app.use(express.json());
+// app.use(express.json());
+app.use(bodyParser.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf; // store raw body for signature verification
+  }
+}));
+
 app.use(morgan('combined'));
 app.use(
   cors({
@@ -16,6 +24,17 @@ app.use(
     credentials: true,
   })
 );
+
+const crypto = require('crypto');
+const WEBHOOK_SECRET = process.env.TAWK_SECRET; // from your .env
+
+function verifyTawkSignature(rawBody, signature) {
+  const expected = crypto
+    .createHmac('sha1', WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest('hex');
+  return signature === expected;
+}
 
 
 // Nodemailer transporter (use environment variables in production)
@@ -437,69 +456,52 @@ app.get('/admin/orders', authenticate, requireAdmin, async (req, res) => {
 });
 
 app.post('/api/webhooks/palmpay', async (req, res) => {
-  const { reference, status, amount } = req.body;
-  const order = await Order.findOne({ palmpayRef: reference });
-  if (!order) return res.status(404).send('Order not found');
-  if (status === 'success') {
-    order.status = 'paid';
-    await order.save();
+  try {
+    const { reference, status, amount } = req.body;
 
-    // Professional confirmation email
-    try {
+    // find order by palmpayRef in Firestore
+    const snap = await db.collection('orders').where('palmpayRef', '==', reference).limit(1).get();
+    if (snap.empty) {
+      return res.status(404).send('Order not found');
+    }
+    const doc = snap.docs[0];
+    const order = { id: doc.id, ...doc.data() };
+
+    if (status === 'success') {
+      await doc.ref.update({ status: 'paid' });
+
+      // send email
       await transporter.sendMail({
-        from: '"Iproedge" hiproedge@gmail.com',
+        from: '"Iproedge" <hiproedge@gmail.com>',
         to: order.userEmail,
         subject: 'Payment Confirmation – Thank You for Your Order!',
-        html: `
-          <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa; padding: 0; margin: 0;">
-            <div style="max-width: 520px; margin: 30px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(60,60,60,0.06); overflow: hidden;">
-              <div style="background: #ffbb00; padding: 28px 30px;">
-                <h1 style="margin: 0; color: #1a1a1a; font-size: 1.8rem; letter-spacing: 1px;">Your Payment Was Received!</h1>
-              </div>
-              <div style="padding: 28px 30px 20px 30px;">
-                <p style="font-size: 1.1rem; color: #24292f; margin: 0 0 16px;">
-                  Hi <strong>${order.name || order.userName || 'Valued Customer'}</strong>,
-                </p>
-                <p style="font-size: 1.08rem; color: #222; margin-bottom: 20px;">
-                  Thank you for your recent order with us!<br>
-                  We have <span style="color: #22bb33; font-weight: 600;">successfully received your payment</span> of 
-                  <strong style="color: #06a;">₦${amount}</strong> for order <strong>${order._id}</strong>.
-                </p>
-                <div style="background: #f6f9fc; padding: 16px 20px; border-radius: 6px; margin-bottom: 16px;">
-                  <p style="margin: 0; color: #1a1a1a;">
-                    <b>Order ID:</b> <span style="color: #0066c0;">${order._id}</span><br>
-                    <b>Payment Reference:</b> <span style="color: #0066c0;">${reference}</span>
-                  </p>
-                </div>
-                <p style="font-size: 1.07rem; color: #444; margin-bottom: 18px;">
-                  Our team is now processing your order and you will receive an update once it is ready for delivery.<br>
-                  If you have any questions, you may reply to this email or call us.
-                </p>
-                <div style="margin: 30px 0 15px 0;">
-                  <a href="https://www.iproedge.store/orders/${order._id}" style="display: inline-block; padding: 12px 32px; background: #ffbb00; color: #1a1a1a; font-weight: 600; border-radius: 7px; font-size: 1rem; text-decoration: none;">View Order</a>
-                </div>
-                <hr style="margin: 25px 0;">
-                <p style="font-size: 1rem; color: #888;">
-                  Thank you for choosing <strong>Iproedge</strong>!<br>
-                  <span style="color: #1a1a1a;">We appreciate your business.</span>
-                </p>
-                <p style="font-size: 1rem; color: #bbb; margin-top: 20px;">
-                  — The Iproedge Team
-                </p>
-              </div>
-            </div>
-            <div style="text-align: center; color: #aaa; font-size: 0.95rem; margin: 18px 0;">
-              &copy; ${new Date().getFullYear()} Iproedge. All rights reserved.
-            </div>
-          </div>
-        `
+        html: generatePaymentHtml(order, amount, reference),
       });
-    } catch (err) {
-      console.error('Email send error:', err);
-      // You can choose to return 500 here or just log the error
     }
+
+    res.send('ok');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).send('Server error');
   }
-  res.send('ok');
+});
+app.post('/api/webhooks/tawk', (req, res) => {
+  const signature = req.headers['x-tawk-signature'];
+
+  if (!verifyTawkSignature(req.rawBody, signature)) {
+    console.error('❌ Invalid Tawk.to signature');
+    return res.status(401).send('Invalid signature');
+  }
+
+  console.log('✅ Verified Tawk.to webhook');
+  console.log('Payload:', req.body);
+
+  // 👉 Handle the event
+  // For example:
+  // if (req.body.type === 'ticket.created') { ... }
+  // if (req.body.type === 'chat.ended') { ... }
+
+  res.status(200).send('ok');
 });
 
 app.listen(PORT, () => {
