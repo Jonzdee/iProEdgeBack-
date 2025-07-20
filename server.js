@@ -563,6 +563,39 @@ app.post('/wallet/withdraw', authenticate, async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+app.patch('/orders/:id/deliver', async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    // Mark as delivered
+    order.status = 'delivered';
+    await order.save();
+
+    // Find the user who placed this order
+    const userB = await User.findOne({ email: order.userEmail });
+    if (!userB) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Add wallet reward for User B
+    userB.walletBalance = (userB.walletBalance || 0) + 500;
+    await userB.save();
+
+    // If User B was referred by someone, reward User A
+    if (userB.referredBy) {
+      const userA = await User.findOne({ referralCode: userB.referredBy });
+      if (userA) {
+        userA.walletBalance = (userA.walletBalance || 0) + 500;
+        await userA.save();
+      }
+    }
+
+    return res.json({ success: true, message: 'Order delivered and rewards applied' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 
 app.listen(PORT, () => {
