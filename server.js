@@ -563,39 +563,56 @@ app.post('/wallet/withdraw', authenticate, async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-app.patch('/orders/:id/deliver', async (req, res) => {
+app.patch('/orders/:id/deliver', authenticate, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-    // Mark as delivered
-    order.status = 'delivered';
-    await order.save();
+    // Fetch order from Firestore
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderSnap = await orderRef.get();
+    if (!orderSnap.exists) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
 
-    // Find the user who placed this order
-    const userB = await User.findOne({ email: order.userEmail });
-    if (!userB) return res.status(404).json({ success: false, message: 'User not found' });
+    const orderData = orderSnap.data();
+    const userEmail = orderData.userEmail;
 
-    // Add wallet reward for User B
-    userB.walletBalance = (userB.walletBalance || 0) + 500;
-    await userB.save();
+    // Mark order as delivered
+    await orderRef.update({
+      status: 'delivered',
+      deliveredAt: admin.firestore.Timestamp.now(),
+    });
 
-    // If User B was referred by someone, reward User A
-    if (userB.referredBy) {
-      const userA = await User.findOne({ referralCode: userB.referredBy });
-      if (userA) {
-        userA.walletBalance = (userA.walletBalance || 0) + 500;
-        await userA.save();
+    // Fetch User B (buyer)
+    const userBRef = db.collection('users').doc(userEmail);
+    const userBSnap = await userBRef.get();
+    if (!userBSnap.exists) {
+      return res.status(404).json({ success: false, message: 'Buyer not found' });
+    }
+
+    // Reward User B
+    const userBData = userBSnap.data();
+    const currentBalB = userBData.walletBalance || 0;
+    await userBRef.update({ walletBalance: currentBalB + 500 });
+
+    // Reward User A (referrer) if exists
+    if (userBData.referredBy) {
+      const userARef = db.collection('users').doc(userBData.referredBy);
+      const userASnap = await userARef.get();
+      if (userASnap.exists) {
+        const userAData = userASnap.data();
+        const currentBalA = userAData.walletBalance || 0;
+        await userARef.update({ walletBalance: currentBalA + 500 });
       }
     }
 
-    return res.json({ success: true, message: 'Order delivered and rewards applied' });
+    return res.json({ success: true, message: 'Order marked as delivered, rewards applied' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('[PATCH /orders/:id/deliver] Error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 
 app.listen(PORT, () => {
