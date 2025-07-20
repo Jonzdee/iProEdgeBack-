@@ -1,4 +1,4 @@
-require('dotenv').config();
+
 const express = require('express');
 const { db, admin } = require('./firebase');
 const nodemailer = require('nodemailer');
@@ -506,6 +506,30 @@ app.post('/api/webhooks/tawk', (req, res) => {
 
   res.status(200).send('ok');
 });
+// ✅ Get wallet balance for logged-in user
+app.get('/wallet', authenticate, async (req, res) => {
+  try {
+    const userEmail = req.query.userEmail;
+    if (!userEmail) {
+      return res.status(400).json({ success: false, error: 'Missing userEmail' });
+    }
+
+    const userDoc = await db.collection('users').doc(userEmail).get();
+
+    if (!userDoc.exists) {
+      // If no record, initialize wallet with 0
+      await db.collection('users').doc(userEmail).set({ walletBalance: 0 }, { merge: true });
+      return res.json({ success: true, balance: 0 });
+    }
+
+    const balance = userDoc.data().walletBalance || 0;
+    return res.json({ success: true, balance });
+  } catch (err) {
+    console.error('[GET /wallet] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
