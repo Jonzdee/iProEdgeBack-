@@ -533,16 +533,12 @@ app.get('/referral-code', authenticate, async (req, res) => {
 // ✅ Get wallet balance for logged-in user
 app.get('/wallet', authenticate, async (req, res) => {
   try {
-    const userEmail = req.query.userEmail;
-    if (!userEmail) {
-      return res.status(400).json({ success: false, error: 'Missing userEmail' });
-    }
-
-    const userDoc = await db.collection('users').doc(userEmail).get();
+    const uid = req.user.uid; // use UID
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      // If no record, initialize wallet with 0
-      await db.collection('users').doc(userEmail).set({ walletBalance: 0 }, { merge: true });
+      await userRef.set({ walletBalance: 0 }, { merge: true });
       return res.json({ success: true, balance: 0 });
     }
 
@@ -550,56 +546,56 @@ app.get('/wallet', authenticate, async (req, res) => {
     return res.json({ success: true, balance });
   } catch (err) {
     console.error('[GET /wallet] Error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
+
 app.post('/wallet/withdraw', authenticate, async (req, res) => {
-  const { userEmail, amount } = req.body;
-  if (!userEmail || !amount) {
-    return res.status(400).json({ success: false, error: 'Missing fields' });
+  const { amount } = req.body; // no need to send email
+  const uid = req.user.uid;
+
+  if (!amount) {
+    return res.status(400).json({ success: false, error: 'Missing amount' });
   }
 
   try {
-    const userRef = db.collection('users').doc(userEmail);
+    const userRef = db.collection('users').doc(uid);
 
     await db.runTransaction(async (t) => {
       const doc = await t.get(userRef);
-      if (!doc.exists || (doc.data().walletBalance || 0) < amount) {
+      const balance = doc.exists ? (doc.data().walletBalance || 0) : 0;
+
+      if (balance < amount) {
         throw new Error('Insufficient balance');
       }
-      t.update(userRef, {
-        walletBalance: (doc.data().walletBalance || 0) - amount
-      });
+      t.update(userRef, { walletBalance: balance - amount });
     });
 
-    // Optional: log withdrawal requests
     await db.collection('withdrawRequests').add({
-      userEmail,
+      uid,
       amount,
       status: 'pending',
       timestamp: admin.firestore.Timestamp.now(),
     });
 
-    res.json({ success: true, message: 'Withdrawal request submitted' });
+    return res.json({ success: true, message: 'Withdrawal request submitted' });
   } catch (err) {
     console.error('[POST /wallet/withdraw] Error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
+
 app.patch('/orders/:id/deliver', authenticate, requireAdmin, async (req, res) => {
   try {
     const orderId = req.params.id;
 
-    // Fetch order from Firestore
     const orderRef = db.collection('orders').doc(orderId);
     const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
+    if (!orderSnap.exists) return res.status(404).json({ success: false, message: 'Order not found' });
 
     const orderData = orderSnap.data();
-    const userEmail = orderData.userEmail;
+    const userId = orderData.userId; // ✅ must be UID
 
     // Mark order as delivered
     await orderRef.update({
@@ -607,25 +603,21 @@ app.patch('/orders/:id/deliver', authenticate, requireAdmin, async (req, res) =>
       deliveredAt: admin.firestore.Timestamp.now(),
     });
 
-    // Fetch User B (buyer)
-    const userBRef = db.collection('users').doc(userEmail);
-    const userBSnap = await userBRef.get();
-    if (!userBSnap.exists) {
-      return res.status(404).json({ success: false, message: 'Buyer not found' });
-    }
-
     // Reward User B
+    const userBRef = db.collection('users').doc(userId);
+    const userBSnap = await userBRef.get();
+    if (!userBSnap.exists) return res.status(404).json({ success: false, message: 'Buyer not found' });
+
     const userBData = userBSnap.data();
     const currentBalB = userBData.walletBalance || 0;
     await userBRef.update({ walletBalance: currentBalB + 500 });
 
-    // Reward User A (referrer) if exists
+    // Reward referrer
     if (userBData.referredBy) {
       const userARef = db.collection('users').doc(userBData.referredBy);
       const userASnap = await userARef.get();
       if (userASnap.exists) {
-        const userAData = userASnap.data();
-        const currentBalA = userAData.walletBalance || 0;
+        const currentBalA = userASnap.data().walletBalance || 0;
         await userARef.update({ walletBalance: currentBalA + 500 });
       }
     }
@@ -636,6 +628,7 @@ app.patch('/orders/:id/deliver', authenticate, requireAdmin, async (req, res) =>
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 
 
