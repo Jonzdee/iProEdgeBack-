@@ -23,7 +23,7 @@ app.use(bodyParser.json({
 app.use(morgan('combined'));
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app','https://www.iproedge.store','https://iproedge.store'],
+    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app', 'https://www.iproedge.store', 'https://iproedge.store'],
     credentials: true,
   })
 );
@@ -71,11 +71,10 @@ function orderConfirmationHtml(order, orderId) {
                     <p style="margin:4px 0;"><strong>Order ID:</strong> <span style="color:#06a;">${orderId}</span></p>
                     <p style="margin:4px 0;"><strong>Order Total:</strong> ₦${order.orderTotal}</p>
                     <p style="margin:4px 0;"><strong>Payment Method:</strong> ${order.paymentMethod}</p>
-                    <p style="margin:4px 0;"><strong>Delivery Type:</strong> ${
-                      order.deliveryType === "door"
-                        ? "Doorstep Delivery"
-                        : `Pickup at ${order.pickupStation || "N/A"}`
-                    }</p>
+                    <p style="margin:4px 0;"><strong>Delivery Type:</strong> ${order.deliveryType === "door"
+      ? "Doorstep Delivery"
+      : `Pickup at ${order.pickupStation || "N/A"}`
+    }</p>
                     <p style="margin:4px 0;"><strong>Delivery Address:</strong> ${order.address || "N/A"}</p>
                     ${order.promo ? `<p style="margin:4px 0;"><strong>Promo Applied:</strong> -₦${order.promo}</p>` : ""}
                   </td>
@@ -87,16 +86,15 @@ function orderConfirmationHtml(order, orderId) {
             <td style="padding:0 30px;">
               <h3 style="font-size:1.13rem; color:#0f3460; margin-bottom:8px;">Your Items</h3>
               <ul style="padding-left:20px; margin:0 0 18px 0; color:#222;">
-                ${
-                  Array.isArray(order.items) && order.items.length > 0
-                    ? order.items.map(item =>
-                        `<li style="margin-bottom:6px;">
+                ${Array.isArray(order.items) && order.items.length > 0
+      ? order.items.map(item =>
+        `<li style="margin-bottom:6px;">
                           <span style="font-weight:500;">${item.name || item.productName}</span>
                           <span style="color:#888;"> (x${item.qty || item.quantity || 1})</span>
                         </li>`
-                      ).join('')
-                    : '<li>No items found in this order.</li>'
-                }
+      ).join('')
+      : '<li>No items found in this order.</li>'
+    }
               </ul>
             </td>
           </tr>
@@ -145,11 +143,10 @@ function adminOrderNotificationHtml(order, orderId) {
                     <p style="margin:4px 0;"><strong>Order ID:</strong> <span style="color:#06a;">${orderId}</span></p>
                     <p style="margin:4px 0;"><strong>Order Total:</strong> ₦${order.orderTotal}</p>
                     <p style="margin:4px 0;"><strong>Payment Method:</strong> ${order.paymentMethod}</p>
-                    <p style="margin:4px 0;"><strong>Delivery Type:</strong> ${
-                      order.deliveryType === "door"
-                        ? "Doorstep Delivery"
-                        : `Pickup at ${order.pickupStation || "N/A"}`
-                    }</p>
+                    <p style="margin:4px 0;"><strong>Delivery Type:</strong> ${order.deliveryType === "door"
+      ? "Doorstep Delivery"
+      : `Pickup at ${order.pickupStation || "N/A"}`
+    }</p>
                     <p style="margin:4px 0;"><strong>Delivery Address:</strong> ${order.address || "N/A"}</p>
                     ${order.promo ? `<p style="margin:4px 0;"><strong>Promo Applied:</strong> -₦${order.promo}</p>` : ""}
                   </td>
@@ -160,16 +157,15 @@ function adminOrderNotificationHtml(order, orderId) {
               </div>
               <h4 style="font-size:1.08rem; color:#0f3460; margin-bottom:6px;">Items Ordered</h4>
               <ul style="padding-left:20px; margin:0 0 14px 0; color:#222; font-size:0.97rem;">
-                ${
-                  Array.isArray(order.items) && order.items.length > 0
-                    ? order.items.map(item =>
-                        `<li style="margin-bottom:5px;">
+                ${Array.isArray(order.items) && order.items.length > 0
+      ? order.items.map(item =>
+        `<li style="margin-bottom:5px;">
                           <span style="font-weight:500;">${item.name || item.productName}</span>
                           <span style="color:#888;"> (x${item.qty || item.quantity || 1})</span>
                         </li>`
-                      ).join('')
-                    : '<li>No items found in this order.</li>'
-                }
+      ).join('')
+      : '<li>No items found in this order.</li>'
+    }
               </ul>
               <div style="color:#888; font-size:0.95rem; margin-top:18px;">
                 Login to your dashboard for full details.
@@ -256,7 +252,7 @@ app.post('/order', authenticate, async (req, res) => {
       return res.status(200).json({ success: true, orderId: doc.id });
     }
 
-    
+
 
     // Save to Firestore (with clientOrderId)
     const docRef = await db.collection('orders').add({
@@ -265,7 +261,7 @@ app.post('/order', authenticate, async (req, res) => {
       timestamp: admin.firestore.Timestamp.now(),
     });
 
-   
+
     // Prepare customer email
     const mailOptions = {
       from: process.env.MAIL_USER || 'hiproedge@gmail.com',
