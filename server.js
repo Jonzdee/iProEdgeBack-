@@ -506,6 +506,30 @@ app.post('/api/webhooks/tawk', (req, res) => {
 
   res.status(200).send('ok');
 });
+
+app.get('/referral-code', authenticate, async (req, res) => {
+  try {
+    const { userEmail } = req.query;
+    if (!userEmail) {
+      return res.status(400).json({ success: false, error: 'Missing userEmail' });
+    }
+
+    const userDoc = await db.collection('users').doc(userEmail).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const data = userDoc.data();
+    return res.json({
+      success: true,
+      code: data.referralCode || '',
+    });
+  } catch (err) {
+    console.error('[GET /referral-code] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ✅ Get wallet balance for logged-in user
 app.get('/wallet', authenticate, async (req, res) => {
   try {
