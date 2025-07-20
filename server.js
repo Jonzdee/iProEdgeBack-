@@ -530,6 +530,40 @@ app.get('/wallet', authenticate, async (req, res) => {
   }
 });
 
+app.post('/wallet/withdraw', authenticate, async (req, res) => {
+  const { userEmail, amount } = req.body;
+  if (!userEmail || !amount) {
+    return res.status(400).json({ success: false, error: 'Missing fields' });
+  }
+
+  try {
+    const userRef = db.collection('users').doc(userEmail);
+
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(userRef);
+      if (!doc.exists || (doc.data().walletBalance || 0) < amount) {
+        throw new Error('Insufficient balance');
+      }
+      t.update(userRef, {
+        walletBalance: (doc.data().walletBalance || 0) - amount
+      });
+    });
+
+    // Optional: log withdrawal requests
+    await db.collection('withdrawRequests').add({
+      userEmail,
+      amount,
+      status: 'pending',
+      timestamp: admin.firestore.Timestamp.now(),
+    });
+
+    res.json({ success: true, message: 'Withdrawal request submitted' });
+  } catch (err) {
+    console.error('[POST /wallet/withdraw] Error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
