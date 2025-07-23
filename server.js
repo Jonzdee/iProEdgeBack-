@@ -470,7 +470,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
       {
         email,
         amount, // already in kobo
-        metadata, // extra info (e.g. name, phone, orderId)
+        metadata,
         callback_url: `${process.env.FRONTEND_URL}/checkout/success`,
       },
       {
@@ -487,10 +487,8 @@ app.post("/api/paystack/initialize", async (req, res) => {
     res.status(500).json({ error: "Payment initialization failed" });
   }
 });
-
 // ✅ Paystack Webhook to confirm payment
 app.post("/api/paystack/webhook", (req, res) => {
-  // Paystack will send payment event here
   const event = req.body;
   console.log("🔔 Webhook event:", event);
 
