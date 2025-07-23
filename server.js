@@ -454,53 +454,52 @@ app.get('/admin/orders', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/webhooks/palmpay', async (req, res) => {
+// ✅ Initialize payment route
+app.post("/api/paystack/initialize", async (req, res) => {
   try {
-    const { reference, status, amount } = req.body;
+    const { email, amount, metadata } = req.body;
 
-    // find order by palmpayRef in Firestore
-    const snap = await db.collection('orders').where('palmpayRef', '==', reference).limit(1).get();
-    if (snap.empty) {
-      return res.status(404).send('Order not found');
-    }
-    const doc = snap.docs[0];
-    const order = { id: doc.id, ...doc.data() };
-
-    if (status === 'success') {
-      await doc.ref.update({ status: 'paid' });
-
-      // send email
-      await transporter.sendMail({
-        from: '"Iproedge" <hiproedge@gmail.com>',
-        to: order.userEmail,
-        subject: 'Payment Confirmation – Thank You for Your Order!',
-        html: generatePaymentHtml(order, amount, reference),
-      });
+    // Validate amount server-side
+    if (!email || !amount) {
+      return res.status(400).json({ error: "Missing email or amount" });
     }
 
-    res.send('ok');
+    // Paystack expects amount in kobo
+    const paystackRes = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        email,
+        amount, // already in kobo
+        metadata, // extra info (e.g. name, phone, orderId)
+        callback_url: `${process.env.FRONTEND_URL}/checkout/success`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.json(paystackRes.data);
   } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).send('Server error');
+    console.error(error.response?.data || error.message);
+    res.status(500).json({ error: "Payment initialization failed" });
   }
 });
-app.post('/api/webhooks/tawk', (req, res) => {
-  const signature = req.headers['x-tawk-signature'];
 
-  if (!verifyTawkSignature(req.rawBody, signature)) {
-    console.error('❌ Invalid Tawk.to signature');
-    return res.status(401).send('Invalid signature');
+// ✅ Paystack Webhook to confirm payment
+app.post("/api/paystack/webhook", (req, res) => {
+  // Paystack will send payment event here
+  const event = req.body;
+  console.log("🔔 Webhook event:", event);
+
+  if (event.event === "charge.success") {
+    // You can mark order as paid in DB
+    console.log("✅ Payment confirmed for:", event.data.reference);
   }
 
-  console.log('✅ Verified Tawk.to webhook');
-  console.log('Payload:', req.body);
-
-  // 👉 Handle the event
-  // For example:
-  // if (req.body.type === 'ticket.created') { ... }
-  // if (req.body.type === 'chat.ended') { ... }
-
-  res.status(200).send('ok');
+  res.sendStatus(200);
 });
 
 app.get('/referral-code', authenticate, async (req, res) => {
