@@ -10,7 +10,13 @@ const PORT = process.env.PORT || 3001;
 const bodyParser = require('body-parser');
 
 
-
+app.use(morgan('combined'));
+app.use(
+  cors({
+    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app', 'https://www.iproedge.store', 'https://iproedge.store'],
+    credentials: true,
+  })
+);
 // Middleware
 // app.use(express.json());
 app.use(bodyParser.json({
@@ -20,13 +26,7 @@ app.use(bodyParser.json({
   }
 }));
 
-app.use(morgan('combined'));
-app.use(
-  cors({
-    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app', 'https://www.iproedge.store', 'https://iproedge.store'],
-    credentials: true,
-  })
-);
+
 
 const crypto = require('crypto');
 const WEBHOOK_SECRET = process.env.TAWK_SECRET; // from your .env
