@@ -508,7 +508,7 @@ app.get('/verify-payment/:reference', async (req, res) => {
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer YOUR_SECRET_KEY`, // secret key from Paystack dashboard
+        Authorization: `Bearer sk_test_3a479c6f98588a2e74058e50e534d9e8fd45c9b2`, // secret key from Paystack dashboard
         'Content-Type': 'application/json'
       }
     });
