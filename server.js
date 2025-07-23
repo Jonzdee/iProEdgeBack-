@@ -500,6 +500,33 @@ app.post("/api/paystack/webhook", (req, res) => {
   res.sendStatus(200);
 });
 
+// Example Node.js route to verify Paystack payment
+app.get('/verify-payment/:reference', async (req, res) => {
+  const { reference } = req.params;
+
+  try {
+    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer YOUR_SECRET_KEY`, // secret key from Paystack dashboard
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (result.data.status === 'success') {
+      // ✅ Payment verified
+      // 👉 Update your order status in database
+      return res.json({ success: true, data: result.data });
+    } else {
+      return res.status(400).json({ success: false, message: 'Payment not verified' });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 app.get('/referral-code', authenticate, async (req, res) => {
   try {
     const { userEmail } = req.query;
