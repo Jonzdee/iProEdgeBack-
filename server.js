@@ -1,3 +1,6 @@
+// ✅ Load environment variables first
+require('dotenv').config();
+
 
 const express = require('express');
 const { db, admin } = require('./firebase');
@@ -10,13 +13,22 @@ const PORT = process.env.PORT || 3001;
 const bodyParser = require('body-parser');
 
 
+
 app.use(morgan('combined'));
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'https://iproedge-v2.vercel.app', 'https://www.iproedge.store', 'https://iproedge.store'],
+    origin: [
+      'http://localhost:3000',
+      'https://iproedge-v2.vercel.app',
+      'https://www.iproedge.store',
+      'https://iproedge.store'
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'], // ✅ include OPTIONS
+    allowedHeaders: ['Content-Type', 'Authorization'], // ✅ allow your headers
     credentials: true,
   })
 );
+
 // Middleware
 // app.use(express.json());
 app.use(bodyParser.json({
@@ -46,8 +58,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // use TLS
   auth: {
-    user: process.env.MAIL_USER || 'hiproedge@gmail.com',
-    pass: process.env.MAIL_PASS || 'yrdq rplj uvje yqkq',
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
   },
 });
 
@@ -264,7 +276,7 @@ app.post('/order', authenticate, async (req, res) => {
 
     // Prepare customer email
     const mailOptions = {
-      from: process.env.MAIL_USER || 'hiproedge@gmail.com',
+      from: process.env.MAIL_USER,
       to: order.userEmail,
       subject: 'Order Confirmation',
       text: `Hello ${order.userName},
@@ -503,29 +515,31 @@ app.post("/api/paystack/webhook", (req, res) => {
 // Example Node.js route to verify Paystack payment
 app.get('/verify-payment/:reference', async (req, res) => {
   const { reference } = req.params;
-
   try {
+    
+
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer sk_test_3a479c6f98588a2e74058e50e534d9e8fd45c9b2`, // secret key from Paystack dashboard
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, // ✅ put in env, not hardcoded
         'Content-Type': 'application/json'
       }
     });
 
     const result = await response.json();
-    if (result.data.status === 'success') {
-      // ✅ Payment verified
-      // 👉 Update your order status in database
+    
+
+    if (result.status && result.data && result.data.status === 'success') {
       return res.json({ success: true, data: result.data });
     } else {
-      return res.status(400).json({ success: false, message: 'Payment not verified' });
+      return res.status(400).json({ success: false, message: 'Payment not verified', raw: result });
     }
   } catch (err) {
-    console.error(err);
+    console.error('❌ Paystack verify route error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 app.get('/referral-code', authenticate, async (req, res) => {
   try {
