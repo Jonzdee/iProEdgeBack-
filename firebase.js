@@ -1,8 +1,10 @@
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
+  const serviceAccount = require('/etc/secrets/serviceAccountKey.json');
+
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // Uses the GOOGLE_APPLICATION_CREDENTIALS
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 
